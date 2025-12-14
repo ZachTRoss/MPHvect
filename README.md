@@ -20,6 +20,7 @@ Install them with:
 
 ---
 
+Note; multipers is a github package for calculating signed barcodes, by Loiseaux, David and Schreiber, Hannah. https://github.com/DavidLapous/multipers
 ## Installation
 
 Clone the repository:
