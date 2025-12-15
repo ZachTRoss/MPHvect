@@ -8,6 +8,8 @@ from sklearn.neighbors import KernelDensity
 import plotly.graph_objects as go
 import matplotlib.colors as mcolors
 
+
+#The following are functions used to define the main tools fo this repository
 #Normalize Signed Barcodes to Fit inside Unit Square, and replace infinite values with 1
 
 
@@ -99,7 +101,7 @@ def _my_kernel_numba(n, p, x):
     tv = _trans_vector_numba(p.size)
     return _partial_kernel_numba(n, p - tv, x) - _partial_kernel_numba(n, p, x)
 
-
+#this is one of the vectorization functions we define. This takes as input, an unpacked list of pairs (n,p) where p is the triangulation vertex of a piece-wise linear functional, and n is the layer of the nested triangulation for which p appears first.
 @njit
 def _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities):
     N = n_list.size
@@ -118,7 +120,7 @@ def _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities):
 
 
 # ---------------------------
-# Python fallbacks if numba is unavailable
+# Python fallbacks of the above functions if numba is unavailable
 # ---------------------------
 
 if not NUMBA_AVAILABLE:
@@ -219,7 +221,7 @@ def collect_vertices(dim, max_layer):
 
 
 # ---------------------------
-# New version of generate_vect_map returning arrays, not lambdas
+# Removed this function for compatibility with packages
 # ---------------------------
 
 def generate_vect_map(dim, max_layer):
@@ -230,6 +232,7 @@ def generate_vect_map(dim, max_layer):
 # Original vectorization functions
 # ---------------------------
 
+#This fucntion vectorizes 1-parameter persistence diagrams. This takes as input, a list of pairs (n,p) where p is the triangulation vertex indexing  a piece-wise linear functional of the Schauder basis outlined in our paper, and n is the layer of the nested triangulation for which p appears first. This function works faster than 'MPHvect_vectorization_map' defined below, and is more practical for vectorizing large collections of persistence diagrams (significantly faster if 'numba' is installed).
 def vectorize(index_list, pers_diagram):
     """
     index_list should be (n_list, p_list).
@@ -243,13 +246,20 @@ def vectorize(index_list, pers_diagram):
         out.append(total)
     return np.array(out)
 
+#The following is the same as the above, but is set up for higher-dimensional signed barcodes, such as those outlined in 	arXiv:2107.06800 , derived from the 'Multipers' package.. This takes as input, an unpacked list of pairs (n,p) where p is the triangulation vertex of a piece-wise linear functional, and n is the layer of the nested triangulation for which p appears first. 
+#The other inputs are the points of the persistence diagram, and multiplicities of those points. This function works best for 
 
 def vectorize_fast(n_list, p_list, pers_diagram, multiplicities):
+    if not np.all(np.isfinite(pers_diagram)):
+        raise ValueError("pers_diagram contains non-finite values")
+    if np.any(pers_diagram > 1):
+        raise ValueError("pers_diagram entries must be normalized (0<=entry <= 1)")
+        
     return _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities)
 
 
 # ---------------------------
-# One-shot vectorization map
+# One-shot vectorization map: slower, but easier to use when only vectorizing a single diagram or signed barcode. Requires normalization of points in the persistence diagrasm/barcode before using
 # ---------------------------
 
 def MPHvect_vectorization_map(pers_diagram, multiplicities, dim=2, max_layer=4):
@@ -261,7 +271,7 @@ def MPHvect_vectorization_map(pers_diagram, multiplicities, dim=2, max_layer=4):
     n_list, p_list = collect_vertices(dim, max_layer)
     return vectorize_fast(n_list, p_list, pers_diagram, multiplicities)
 
-#Visualize this Vectorization on the Signed Barcode
+#The following are used to visualize the vectorization of 1-parameter and 2-parameter persistence diagrams/barcodes
 
 # Number of colors
 n_colors = 8
@@ -285,11 +295,7 @@ my_neg_colors = [cmap(i / (n_colors - 1)) for i in range(n_colors)]
 
 
 
-# Plot the colors to visualize
 
-# Print RGBA values for reference
-#for i, color in enumerate(colors):
-   # print(f"Color {i+1}: {color}")
 plotly_colors = [f"rgba({int(r*255)}, {int(g*255)}, {int(b*255)}, {a})"
                  for r, g, b, a in my_colors]
 
@@ -469,9 +475,12 @@ def plot_nailbed(points, vectors, colors=plotly_colors):
 
     fig.show()
 
-# This function is a wrap up of the previous two functions. It is the most user-friendly. You can use this to takeinputs of a persistence diagram (and possibly multiplicities), as well as the number of triangulations you wish to use in your vectorizatoin, and output the visualization for the vectorization of given diagram, whether it's 1-parameter or 2-parameter.  Note: This normalizes persistence diagrams by (10*max entry /9), then replaces infinite values with 1. This way, infinite lifespans still rank more highly than the maximal finite lifespan(s).
+# This function is a wrap up of the previous two functions. It is the most user-friendly. You can use this to take inputs of a persistence diagram or signed barcode (and possibly multiplicities), as well as the number of triangulations you wish to use in your vectorizatoin. More triangulations will take longer to compute. 
+#The output will be the visualization for the vectorization of given diagram, whether it's 1-parameter or 2-parameter.  Note: This normalizes persistence diagrams  for you, so no need to normalize them first. In this visualization function, the normalization is division by (10*max entry /9), 
+#then replaces infinite values with 1. This way, infinite lifespans still rank more highly in the vecotrization than the maximal finite lifespan(s). 
 
-def MPHvect_visualize(points, multiplicities=None, number_of_triangulations=5):
+
+def MPHvect_visualize(points, multiplicities=None, number_of_triangulations=4):
 
   if points[0].size==2:
     vecmap=generate_vect_map(1,number_of_triangulations)
