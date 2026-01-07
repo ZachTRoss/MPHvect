@@ -517,7 +517,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
 #define SVM+PCA as a single function to make things easier when doing classifications in the examples
-def do_SVM_and_PCA(class1, class2):
+def do_SVM_and_PCA(class1, class2, n_permutations=1000):
 
   # Combine data and create labels
   X = np.vstack((class1, class2))
