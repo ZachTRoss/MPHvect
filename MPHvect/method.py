@@ -10,7 +10,7 @@ Original file is located at
 import numpy as np
 import matplotlib.pyplot as plt
 import itertools
-from numba import njit, prange
+#from numba import njit, prange
 from sklearn.neighbors import KernelDensity
 import plotly.graph_objects as go
 import matplotlib.colors as mcolors
@@ -28,7 +28,7 @@ def replace_inf_safe(barcode):
 
 # Try import numba; if not present, fall back to no-jit
 try:
-    from numba import njit
+    from numba import njit, prange
     NUMBA_AVAILABLE = True
 except Exception:
     def njit(func=None, **kwargs):
