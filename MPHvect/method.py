@@ -15,7 +15,19 @@ from sklearn.neighbors import KernelDensity
 import plotly.graph_objects as go
 import matplotlib.colors as mcolors
 
+
 #Normalize Signed Barcodes to Fit inside Unit Square, and replace infinite values with 1
+
+
+def replace_inf_safe(barcode):
+    vectors_copy = barcode.copy()
+
+    for arr in vectors_copy:
+      arr[np.isinf(arr)] = 1
+
+    return vectors_copy
+
+
 from numba import njit, prange
 @njit
 def my_lambda_numba(n, p, x):
