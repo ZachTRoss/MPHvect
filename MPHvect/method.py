@@ -18,30 +18,21 @@ import matplotlib.colors as mcolors
 #Normalize Signed Barcodes to Fit inside Unit Square, and replace infinite values with 1
 
 
-def replace_inf_safe(barcode):
-    vectors_copy = barcode.copy()
-
-    for arr in vectors_copy:
-      arr[np.isinf(arr)] = 1
-
-    return vectors_copy
-
-# Try import numba; if not present, fall back to no-jit
 try:
     from numba import njit, prange
     NUMBA_AVAILABLE = True
-except Exception:
+except ImportError:
+    NUMBA_AVAILABLE = False
+    # dummy decorator if numba not available
     def njit(func=None, **kwargs):
         if func is None:
             def _dec(f):
                 return f
             return _dec
         return func
-    NUMBA_AVAILABLE = False
-
 
 # ---------------------------
-# NUMBA-accelerated internals
+# Core functions
 # ---------------------------
 
 @njit
@@ -125,11 +116,10 @@ def _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities):
 
 
 # ---------------------------
-# Python fallbacks if numba is unavailable
+# Python fallbacks for Numba-disabled environments
 # ---------------------------
 
 if not NUMBA_AVAILABLE:
-
     def _my_lambda_numba(n, p, x):
         diff = x - p
         mn = diff[0]
@@ -165,38 +155,26 @@ if not NUMBA_AVAILABLE:
     def _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities):
         N = len(n_list)
         out = np.zeros(N)
-        for i in range(N):
-            total = 0
-            for j in range(len(pers_diagram)):
-                total += multiplicities[j] * _my_kernel_numba(n_list[i], p_list[i], pers_diagram[j])
+        for i, (n, p) in enumerate(zip(n_list, p_list)):
+            total = 0.0
+            for j, x in enumerate(pers_diagram):
+                total += multiplicities[j] * _my_kernel_numba(n, p, x)
             out[i] = total
         return out
 
+# ---------------------------
+# Aliases exposed to user
+# ---------------------------
+my_lambda = _my_lambda_numba
+magn = _magn_numba
+partial_kernel = _partial_kernel_numba
+trans_vector = _trans_vector_numba
+my_kernel = _my_kernel_numba
+vectorize_fast = _vectorize_fast_numba
 
 # ---------------------------
-# renaming with simpler function titles
+# Vertex generation functions
 # ---------------------------
-
-def my_lambda(n, p, x):
-    return _my_lambda_numba(n, p, x)
-
-def magn(v):
-    return _magn_numba(v)
-
-def partial_kernel(n, p, x):
-    return _partial_kernel_numba(n, p, x)
-
-def trans_vector(dim_diagrams):
-    return _trans_vector_numba(dim_diagrams)
-
-def my_kernel(n, p, x):
-    return _my_kernel_numba(n, p, x)
-
-
-# ---------------------------
-# Vertex generation (Python only)
-# ---------------------------
-
 def generate_V_n(dim, n):
     nums = range(0, 2**n + 1)
     V = []
@@ -225,22 +203,11 @@ def collect_vertices(dim, max_layer):
     return np.array(all_n, dtype=np.int64), np.array(all_p, dtype=float)
 
 
-# ---------------------------
-# New version of generate_vect_map returning arrays, not lambdas
-# ---------------------------
-
 def generate_vect_map(dim, max_layer):
     return collect_vertices(dim, max_layer)
 
 
-# ---------------------------
-# Original vectorization functions
-# ---------------------------
-
 def vectorize(index_list, pers_diagram):
-    """
-    index_list should be (n_list, p_list).
-    """
     n_list, p_list = index_list
     out = []
     for n, p in zip(n_list, p_list):
@@ -249,10 +216,6 @@ def vectorize(index_list, pers_diagram):
             total += my_kernel(n, p, x)
         out.append(total)
     return np.array(out)
-
-
-def vectorize_fast(n_list, p_list, pers_diagram, multiplicities):
-    return _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities)
 
 
 # ---------------------------
