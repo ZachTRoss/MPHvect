@@ -16,6 +16,22 @@ import plotly.graph_objects as go
 import matplotlib.colors as mcolors
 
 #Normalize Signed Barcodes to Fit inside Unit Square, and replace infinite values with 1
+from numba import njit, prange
+@njit
+def vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities):
+    N = n_list.size
+    M = pers_diagram.shape[0]
+    out = np.zeros(N)
+
+    for i in range(N):
+        n = int(n_list[i])
+        p = p_list[i]
+        total = 0.0
+        for j in range(M):
+            total += multiplicities[j] * _my_kernel_numba(n, p, pers_diagram[j])
+        out[i] = total
+
+    return out
 
 
 try:
