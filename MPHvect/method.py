@@ -536,7 +536,7 @@ def MPHvect_visualize(points, multiplicities=None, number_of_triangulations=5):
 from sklearn import svm
 from sklearn.svm import SVC
 from sklearn.decomposition import PCA
-from sklearn.model_selection import coross_val_score, KFold
+from sklearn.model_selection import cross_val_score, KFold
 #from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, 
 
 #define SVM+PCA as a single function to make things easier when doing classifications in the examples
