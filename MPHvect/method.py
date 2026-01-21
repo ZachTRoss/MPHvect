@@ -275,8 +275,7 @@ def vectorize(index_list, pers_diagram):
     return np.array(out)
 
 
-def vectorize_fast(n_list, p_list, pers_diagram, multiplicities):
-    return _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities)
+
 
 
 # ---------------------------
