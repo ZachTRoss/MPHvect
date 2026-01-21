@@ -45,84 +45,83 @@ except Exception:
 # ---------------------------
 
 @njit
-def _my_lambda_numba(n, p, x):
-    dim = p.size
-    mn = x[0] - p[0]
-    for i in range(1, dim):
-        val = x[i] - p[i]
-        if val < mn:
-            mn = val
-    if mn < 0.0:
-        mn = 0.0
-    return (2.0 ** (-n)) * mn
-
+def my_lambda(n, p, x):
+    return 2.0**n * max(0.0, min(x - p))
 
 @njit
-def _magn_numba(v):
+def magn(v):
     s = 0
-    for i in range(v.size):
+    for i in range(len(v)):
         s += v[i]
     return s
 
+# Precompute all indexing vectors (same for all n,p,x)
+
 
 @njit
-def _partial_kernel_numba(n, p, x):
-    dim = p.size
+def make_indexing_vectors(dim):
+    n = 1 << dim          # 2**dim
+    out = np.empty((n, dim), dtype=np.int64)
+
+    for i in range(n):
+        for j in range(dim):
+            # fill from most-significant bit to least
+            out[i, dim - 1 - j] = (i >> j) & 1
+
+    return out
+    
+
+
+@njit
+def partial_kernel(n, p, x):
     total = 0.0
-    max_iter = 1 << dim
-    for mask in range(max_iter):
-        index_point = np.empty(dim)
-        parity = 0
-        for i in range(dim):
-            bit = (mask >> i) & 1
-            parity += bit
-            index_point[i] = p[i] + (bit * (2.0 ** (-n)))
-        sign = -1.0 if (parity % 2 == 1) else 1.0
-        total += sign * _my_lambda_numba(n, index_point, x)
+    scale = 2.0**(-n)
+    indexing_vectors=make_indexing_vectors(len(p))
+    for i in range(indexing_vectors.shape[0]):
+        v = indexing_vectors[i]
+        index_point = p + scale * v
+        total += (-1)**magn(v) * my_lambda(n, index_point, x)
     return total
 
+@njit
+def trans_vector(dim_diagrams):
+    t = np.empty(dim_diagrams, dtype=np.float64)
+    for i in range(dim_diagrams):
+        t[i] = 1.0
+    return t
 
 @njit
-def _trans_vector_numba(dim):
-    v = np.empty(dim)
-    for i in range(dim):
-        v[i] = 1.0
-    return v
-
-
-@njit
-def _my_kernel_numba(n, p, x):
-    diff = x - p
-    mx = 0.0
-    for i in range(diff.size):
-        val = diff[i]
-        if val < 0:
-            val = -val
-        if val > mx:
-            mx = val
-    if mx > 1.0:
+def my_kernel(n, p, x):
+    m = np.max(np.abs(p - x))
+    if m > 2.0**(-n):
         return 0.0
-
-    tv = _trans_vector_numba(p.size)
-    return _partial_kernel_numba(n, p - tv, x) - _partial_kernel_numba(n, p, x)
+    else:
+        return partial_kernel(n, p - trans_vector(len(p)), x) - partial_kernel(n, p, x)
 
 
 @njit
-def _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities):
-    N = n_list.size
+def vectorize_fast(n_list, p_list, pers_diagram, multiplicities):
+    """
+    Compute the kernel embedding vector for a persistence diagram.
+
+    n_list: (N,) array of integers (kernel parameters)
+    p_list: (N, d) array of kernel centers
+    pers_diagram: (M, d) array of diagram points
+    multiplicities: (M,) array of multiplicities
+
+    Returns: (N,) vector = sum_i multiplicities[i] * K(·, x_i)
+    """
+    N = len(n_list)
     M = pers_diagram.shape[0]
     out = np.zeros(N)
-
     for i in range(N):
-        n = int(n_list[i])
+        n = n_list[i]
         p = p_list[i]
         total = 0.0
         for j in range(M):
-            total += multiplicities[j] * _my_kernel_numba(n, p, pers_diagram[j])
+            total += multiplicities[j] * my_kernel(n, p, pers_diagram[j])
         out[i] = total
-
     return out
-
 
 # ---------------------------
 # Python fallbacks if numba is unavailable
@@ -130,72 +129,72 @@ def _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities):
 
 if not NUMBA_AVAILABLE:
 
-    def _my_lambda_numba(n, p, x):
-        diff = x - p
-        mn = diff[0]
-        for i in range(1, diff.size):
-            if diff[i] < mn:
-                mn = diff[i]
-        if mn < 0:
-            mn = 0.0
-        return (2.0 ** -n) * mn
-
-    def _magn_numba(v):
-        return int(np.sum(v))
-
-    def _partial_kernel_numba(n, p, x):
-        dim = p.size
+   
+    def my_lambda(n, p, x):
+        return 2.0**n * max(0.0, min(x - p))
+    
+    
+    def magn(v):
+        s = 0
+        for i in range(len(v)):
+            s += v[i]
+        return s
+    
+    
+    
+    
+   
+    def partial_kernel(n, p, x):
         total = 0.0
-        for mask in range(1 << dim):
-            v = np.array([(mask >> i) & 1 for i in range(dim)])
-            parity = np.sum(v)
-            index_point = p + v * (2.0 ** (-n))
-            total += ((-1)**parity) * _my_lambda_numba(n, index_point, x)
+        scale = 2.0**(-n)
+        dim_diagrams=len(p)
+        indexing_vectors = np.array(list(itertools.product([0, 1], repeat=dim_diagrams)), dtype=np.int64)
+        for i in range(indexing_vectors.shape[0]):
+            v = indexing_vectors[i]
+            index_point = p + scale * v
+            total += (-1)**magn(v) * my_lambda(n, index_point, x)
         return total
-
-    def _trans_vector_numba(dim):
-        return np.ones(dim)
-
-    def _my_kernel_numba(n, p, x):
-        if np.max(np.abs(x - p)) > 1:
+    
+    
+    def trans_vector(dim_diagrams):
+        t = np.empty(dim_diagrams, dtype=np.float64)
+        for i in range(dim_diagrams):
+            t[i] = 1.0
+        return t
+    
+    
+    def my_kernel(n, p, x):
+        m = np.max(np.abs(p - x))
+        if m > 2.0**(-n):
             return 0.0
-        return _partial_kernel_numba(n, p - _trans_vector_numba(p.size), x) - \
-               _partial_kernel_numba(n, p, x)
-
-    def _vectorize_fast_numba(n_list, p_list, pers_diagram, multiplicities):
+        else:
+            return partial_kernel(n, p - trans_vector(len(p)), x) - partial_kernel(n, p, x)
+    
+    
+   
+    def vectorize_fast(n_list, p_list, pers_diagram, multiplicities):
+        """
+        Compute the kernel embedding vector for a persistence diagram.
+    
+        n_list: (N,) array of integers (kernel parameters)
+        p_list: (N, d) array of kernel centers
+        pers_diagram: (M, d) array of diagram points
+        multiplicities: (M,) array of multiplicities
+    
+        Returns: (N,) vector = sum_i multiplicities[i] * K(·, x_i)
+        """
         N = len(n_list)
+        M = pers_diagram.shape[0]
         out = np.zeros(N)
         for i in range(N):
-            total = 0
-            for j in range(len(pers_diagram)):
-                total += multiplicities[j] * _my_kernel_numba(n_list[i], p_list[i], pers_diagram[j])
+            n = n_list[i]
+            p = p_list[i]
+            total = 0.0
+            for j in range(M):
+                total += multiplicities[j] * my_kernel(n, p, pers_diagram[j])
             out[i] = total
         return out
 
-
-# ---------------------------
-# renaming with simpler function titles
-# ---------------------------
-
-def my_lambda(n, p, x):
-    return _my_lambda_numba(n, p, x)
-
-def magn(v):
-    return _magn_numba(v)
-
-def partial_kernel(n, p, x):
-    return _partial_kernel_numba(n, p, x)
-
-def trans_vector(dim_diagrams):
-    return _trans_vector_numba(dim_diagrams)
-
-def my_kernel(n, p, x):
-    return _my_kernel_numba(n, p, x)
-
-
-# ---------------------------
-# Vertex generation (Python only)
-# ---------------------------
 
 def generate_V_n(dim, n):
     nums = range(0, 2**n + 1)
@@ -225,12 +224,37 @@ def collect_vertices(dim, max_layer):
     return np.array(all_n, dtype=np.int64), np.array(all_p, dtype=float)
 
 
+def generate_mixup_V_n(dim, n):
+    nums = range(0, 2**n + 1)
+    V = []
+
+    for point in itertools.product(nums, repeat=dim):
+        if all(a % 2 == 0 for a in point):
+            continue
+        if not all(point[i] < point[i + 1] for i in range(dim-1)):
+            continue
+
+        scaled = tuple(a / (2**n) for a in point)
+        V.append(scaled)
+
+    V.sort()
+    return np.array(V, dtype=float)
+
+
+def collect_vertices_mixup(max_layer):
+    all_n = []
+    all_p = []
+    for n in range(max_layer + 1):
+        Vn = generate_mixup_V_n(3, n)
+        for p in Vn:
+            all_n.append(n)
+            all_p.append(p)
+    return np.array(all_n, dtype=np.int64), np.array(all_p, dtype=np.float64)
 # ---------------------------
 # New version of generate_vect_map returning arrays, not lambdas
 # ---------------------------
 
-def generate_vect_map(dim, max_layer):
-    return collect_vertices(dim, max_layer)
+
 
 
 # ---------------------------
@@ -517,87 +541,58 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
 #define SVM+PCA as a single function to make things easier when doing classifications in the examples
-def do_SVM_and_PCA(class1, class2, n_permutations=1000):
+def do_SVM_and_PCA(list1, list2, n_permutations=10, cv_folds=10, random_state=42):
+    """
+    Performs SVM classification between two sets of vectors, calculates a p-value
+    via permutation test, and plots 3D PCA projection.
 
-  # Combine data and create labels
-  X = np.vstack((class1, class2))
-  y = np.array([0]*len(class1) + [1]*len(class2))
+    Parameters:
+    - list1, list2: lists or arrays of vectors (shape: n_samples x n_features)
+    - n_permutations: number of permutations for p-value calculation
+    - cv_folds: number of cross-validation folds (default 10)
+    - random_state: random seed for reproducibility
 
-  # Split into train and test sets
-  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    Returns:
+    - accuracy: SVM cross-validated accuracy
+    - p_value: permutation test p-value
+    """
+    np.random.seed(random_state)
 
-  # Train SVM
-  clf = SVC(kernel='linear')
-  clf.fit(X_train, y_train)
+    # Convert lists to arrays
+    X1 = np.array(list1)
+    X2 = np.array(list2)
 
-  # Predict and calculate accuracy
-  y_pred = clf.predict(X_test)
-  observed_accuracy = accuracy_score(y_test, y_pred)
-  print("SVM Accuracy:", observed_accuracy)
+    # Combine data and labels
+    X = np.vstack([X1, X2])
+    y = np.array([0]*len(X1) + [1]*len(X2))
 
-  # ==========================
-  # Permutation test for p-value
-  # ==========================
-  permuted_accuracies = []
+    # Define cross-validation strategy
+    cv = KFold(n_splits=cv_folds, shuffle=True, random_state=random_state)
 
-  for _ in range(n_permutations):
-      y_perm = np.random.permutation(y)
+    # Train SVM and calculate cross-validated accuracy
+    clf = SVC(kernel='linear')
+    accuracy = np.mean(cross_val_score(clf, X, y, cv=cv))
+    print(accuracy)
+    # Permutation test for p-value
+    perm_accuracies = []
+    for _ in range(n_permutations):
+        y_perm = np.random.permutation(y)
+        perm_acc = np.mean(cross_val_score(clf, X, y_perm, cv=cv))
+        perm_accuracies.append(perm_acc)
+    perm_accuracies = np.array(perm_accuracies)
+    p_value = np.mean(perm_accuracies >= accuracy)
+    print(p_value)
+    # PCA for visualization
+    pca = PCA(n_components=3)
+    X_pca = pca.fit_transform(X)
 
-      X_tr, X_te, y_tr, y_te = train_test_split(
-          X, y_perm, test_size=0.2, stratify=y_perm
-      )
-
-      clf_perm = SVC(kernel='linear')
-      clf_perm.fit(X_tr, y_tr)
-      y_perm_pred = clf_perm.predict(X_te)
-
-      permuted_accuracies.append(
-          accuracy_score(y_te, y_perm_pred)
-      )
-
-  permuted_accuracies = np.array(permuted_accuracies)
-
-  p_value = (np.sum(permuted_accuracies >= observed_accuracy) + 1) / (n_permutations + 1)
-  print("Permutation-test p-value:", p_value)
-
-  # PCA to 3D
-  pca = PCA(n_components=3)
-  X_pca = pca.fit_transform(X)
-
-  # Get PCA-transformed separating hyperplane
-  w = clf.coef_[0]
-  b = clf.intercept_[0]
-
-  # Project the hyperplane into PCA space
-  w_pca = pca.transform([w])[0] - pca.transform([[0]*X.shape[1]])[0]
-  b_pca = b  # intercept remains scalar
-
-  # Plotting
-  fig = plt.figure(figsize=(10, 7))
-  ax = fig.add_subplot(111, projection='3d')
-
-  # Plot class points
-  ax.scatter(X_pca[y==0, 0], X_pca[y==0, 1], X_pca[y==0, 2], color='blue', label='Class 0')
-  ax.scatter(X_pca[y==1, 0], X_pca[y==1, 1], X_pca[y==1, 2], color='red', label='Class 1')
-
-  # Create grid for hyperplane
-  #xx, yy = np.meshgrid(np.linspace(X_pca[:, 0].min(), X_pca[:, 0].max(), 10),
-                      #np.linspace(X_pca[:, 1].min(), X_pca[:, 1].max(), 10))
-  #zz = (-w_pca[0]*xx - w_pca[1]*yy - b_pca) / w_pca[2]
-
-  # Plot hyperplane
-  #ax.plot_surface(xx, yy, zz, alpha=0.3, color='green', label='Hyperplane')
-
-  s=max(max(X_pca[y==0,0]), -min(X_pca[y==0,0]), max(X_pca[y==1,0]), -min(X_pca[y==1,0]))
-  t=max(max(X_pca[y==0,1]), -min(X_pca[y==0,1]), max(X_pca[y==1,1]), -min(X_pca[y==1,1]))
-  u=max(max(X_pca[y==0,2]), -min(X_pca[y==0,2]), max(X_pca[y==1,2]), -min(X_pca[y==1,2]))
-
-  ax.set_xlabel('PC1')
-  ax.set_ylabel('PC2')
-  ax.set_zlabel('PC3')
-  ax.set_xlim(-s, s)
-  ax.set_ylim(-t,t)
-  ax.set_zlim(-u,u)
-  ax.set_title('3D PCA Projection with SVM Hyperplane')
-  ax.legend()
-  plt.show()
+    fig = plt.figure(figsize=(8,6))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(X_pca[y==0,0], X_pca[y==0,1], X_pca[y==0,2], c='r', label='Class 0', s=50)
+    ax.scatter(X_pca[y==1,0], X_pca[y==1,1], X_pca[y==1,2], c='b', label='Class 1', s=50)
+    ax.set_xlabel('PC1')
+    ax.set_ylabel('PC2')
+    ax.set_zlabel('PC3')
+    ax.set_title(f'3D PCA Projection (SVM Acc={accuracy:.2f}, p={p_value:.3f})')
+    ax.legend()
+    plt.show()
