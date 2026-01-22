@@ -533,7 +533,58 @@ def MPHvect_visualize(points, multiplicities=None, number_of_triangulations=5):
   else:
       raise ValueError("Persistent Diagram must consist of points in 2D or 4D")
 
+def plot_mixup(points):
+    """
+    Plots 3D points in R^3 and the plane y = z as a semi-transparent surface.
 
+    Parameters
+    ----------
+    points : np.ndarray
+        Array of shape (n, 3), where each row is a 3D point [x, y, z].
+    """
+    if points.ndim != 2 or points.shape[1] != 3:
+        raise ValueError("Input must be of shape (n, 3)")
+
+    # Extract coordinates
+    x, y, z = points[:, 0], points[:, 1], points[:, 2]
+
+    # Scatter plot of points
+    scatter = go.Scatter3d(
+        x=x, y=y, z=z,
+        mode='markers',
+        marker=dict(size=6, color='blue', opacity=0.8),
+        name='Points'
+    )
+
+    # Define a grid for the plane y = z
+    grid_range = np.linspace(min(x.min(), y.min(), z.min()) - 1,
+                             max(x.max(), y.max(), z.max()) + 1, 40)
+    X, Y = np.meshgrid(grid_range, grid_range)
+    Z = Y  # because y = z
+
+    # Plane surface
+    plane = go.Surface(
+        x=X, y=Y, z=Z,
+        colorscale=[[0, 'orange'], [1, 'orange']],
+        opacity=0.4,
+        showscale=False,
+        name='Plane y=z'
+    )
+
+    # Combine and configure layout
+    fig = go.Figure(data=[scatter, plane])
+    fig.update_layout(
+        scene=dict(
+            xaxis_title='X',
+            yaxis_title='Y',
+            zaxis_title='Z',
+            aspectmode='cube',
+        ),
+        title='3D Points with Plane y = z',
+        template='plotly_white',
+    )
+
+    fig.show()
 
 #plot mixup barcode vectorization
 def plot_mixup_nailbed(points, vectors, colors=plotly_neg_colors):
