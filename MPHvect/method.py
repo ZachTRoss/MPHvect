@@ -15,6 +15,13 @@ from sklearn.neighbors import KernelDensity
 import plotly.graph_objects as go
 import matplotlib.colors as mcolors
 
+
+
+from sklearn.svm import SVC
+from sklearn.decomposition import PCA
+from sklearn.model_selection import cross_val_score, StratifiedKFold, KFold
+
+
 #Normalize Signed Barcodes to Fit inside Unit Square, and replace infinite values with 1
 
 
@@ -680,10 +687,7 @@ def plot_mixup_nailbed(points, vectors, colors=plotly_neg_colors):
    #
     fig.show()
 
-from sklearn import svm
-from sklearn.svm import SVC
-from sklearn.decomposition import PCA
-from sklearn.model_selection import cross_val_score, KFold
+
 #from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, 
 
 #define SVM+PCA as a single function to make things easier when doing classifications in the examples
@@ -742,3 +746,102 @@ def do_SVM_and_PCA(list1, list2, n_permutations=10, cv_folds=10, random_state=42
     ax.set_title(f'3D PCA Projection (SVM Acc={accuracy:.2f}, p={p_value:.3f})')
     ax.legend()
     plt.show()
+
+
+
+
+
+
+
+
+
+
+
+def do_SVM_and_PCA(list1, list2, n_permutations=1000, cv_folds=10, random_state=42):
+    """
+    Performs SVM classification between two sets of vectors,
+    calculates a p-value via permutation test,
+    and plots 3D PCA projection.
+
+    Parameters:
+    - list1, list2: lists or arrays of vectors (shape: n_samples x n_features)
+    - n_permutations: number of permutations for p-value calculation (default=1000)
+    - cv_folds: number of cross-validation folds (default=10)
+    - random_state: random seed for reproducibility
+
+    Returns:
+    - accuracy: SVM cross-validated accuracy
+    - p_value: permutation test p-value
+    """
+
+    np.random.seed(random_state)
+
+    # Convert lists to arrays
+    X1 = np.array(list1)
+    X2 = np.array(list2)
+
+    # Combine data and labels
+    X = np.vstack([X1, X2])
+    y = np.array([0]*len(X1) + [1]*len(X2))
+
+    # Stratified cross-validation (preserves class balance)
+    cv = StratifiedKFold(
+        n_splits=cv_folds,
+        shuffle=True,
+        random_state=random_state
+    )
+
+    # Define classifier
+    clf = SVC(kernel='linear')
+
+    # Compute real accuracy
+    accuracy = np.mean(cross_val_score(clf, X, y, cv=cv))
+    print(f"Observed accuracy: {accuracy:.4f}")
+
+    # Permutation test
+    perm_accuracies = []
+
+    for _ in range(n_permutations):
+        y_perm = np.random.permutation(y)
+        perm_acc = np.mean(cross_val_score(clf, X, y_perm, cv=cv))
+        perm_accuracies.append(perm_acc)
+
+    perm_accuracies = np.array(perm_accuracies)
+
+    # Corrected permutation p-value
+    p_value = (np.sum(perm_accuracies >= accuracy) + 1) / (n_permutations + 1)
+
+    print(f"Permutation p-value: {p_value:.4f}")
+
+    # PCA for visualization
+    pca = PCA(n_components=3)
+    X_pca = pca.fit_transform(X)
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.scatter(
+        X_pca[y == 0, 0],
+        X_pca[y == 0, 1],
+        X_pca[y == 0, 2],
+        label='Class 0',
+        s=50
+    )
+
+    ax.scatter(
+        X_pca[y == 1, 0],
+        X_pca[y == 1, 1],
+        X_pca[y == 1, 2],
+        label='Class 1',
+        s=50
+    )
+
+    ax.set_xlabel('PC1')
+    ax.set_ylabel('PC2')
+    ax.set_zlabel('PC3')
+    ax.set_title(f'3D PCA Projection (SVM Acc={accuracy:.2f}, p={p_value:.3f})')
+    ax.legend()
+
+    plt.show()
+
+    return accuracy, p_value
