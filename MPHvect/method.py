@@ -220,7 +220,7 @@ def generate_V_n(dim, n):
     return np.array(V, dtype=float)
 
 
-def collect_vertices(dim, max_layer):
+def collect_vertices_old(dim, max_layer):
     all_n = []
     all_p = []
     for n in range(max_layer + 1):
@@ -229,6 +229,32 @@ def collect_vertices(dim, max_layer):
             all_n.append(n)
             all_p.append(p)
     return np.array(all_n, dtype=np.int64), np.array(all_p, dtype=float)
+
+
+
+def collect_vertices(dim, max_layer, min_layer=0):
+    all_n = []
+    all_p = []
+
+    nums=range(0, 2**min_layer + 1)
+
+    for point in itertools.product(nums, repeat=2 * dim):
+   
+        if not all(point[i] < point[i + dim] for i in range(dim)):
+            continue
+
+        scaled = tuple(a / (2**min_layer) for a in point)
+        all_p.append(scaled)
+        all_n.append(min_layer)
+
+
+    for n in range(min_layer+1, max_layer + 1):
+        Vn = generate_V_n(dim, n)
+        for p in Vn:
+            all_n.append(n)
+            all_p.append(p)
+    return np.array(all_n, dtype=np.int64), np.array(all_p, dtype=float)
+
 
 
 def generate_mixup_V_n(dim, n):
