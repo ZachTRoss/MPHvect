@@ -171,12 +171,13 @@ if not NUMBA_AVAILABLE:
         return t
     
     
+ 
     def my_kernel(n, p, x):
         m = np.max(np.abs(p - x))
         if m > 2.0**(-n):
             return 0.0
         else:
-            return partial_kernel(n, p - trans_vector(len(p)), x) - partial_kernel(n, p, x)
+            return partial_kernel(n, p-np.array([2.0**(-n) for _ in range(len(p))]) , x) - partial_kernel(n, p, x)
     
     
    
