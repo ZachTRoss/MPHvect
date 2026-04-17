@@ -49,7 +49,7 @@ def do_a_permutation_test(class_1_vecs, class_2_vecs, num_permutations):
   p_value=np.sum(np.array(test_stats)>=observed_value)/num_permutations
   return p_value
 
-def do_SVM_and_PCA(list1, list2, n_permutations=1000, cv_folds=10, random_state=42):
+def do_SVM_and_PCA(list1, list2, n_permutations=1000, cv_folds=10, random_state=42, name_1='class 0', name_2='class 1'):
   
     """
     Performs SVM classification between two sets of vectors,
@@ -106,7 +106,7 @@ def do_SVM_and_PCA(list1, list2, n_permutations=1000, cv_folds=10, random_state=
         X_pca[y == 0, 0],
         X_pca[y == 0, 1],
         X_pca[y == 0, 2],
-        label='Class 0',
+        label=name_1,
         s=50
     )
 
@@ -114,7 +114,7 @@ def do_SVM_and_PCA(list1, list2, n_permutations=1000, cv_folds=10, random_state=
         X_pca[y == 1, 0],
         X_pca[y == 1, 1],
         X_pca[y == 1, 2],
-        label='Class 1',
+        label=name_2,
         s=50
     )
 
