@@ -124,9 +124,10 @@ def vectorize_fast(n_list, p_list, pers_diagram, multiplicities):
         p = p_list[i]
         total = 0.0
         for j in range(M):
-            total += multiplicities[j] * my_kernel(n, p, pers_diagram[j])
+            total += multiplicities[j] * my_kernel(n, p, pers_diagram[j]) * (pers_diagram[j][1]-pers_diagram[j][0])**2
         out[i] = total
     return out
+
 
 # ---------------------------
 # Python fallbacks if numba is unavailable
@@ -197,7 +198,7 @@ if not NUMBA_AVAILABLE:
             p = p_list[i]
             total = 0.0
             for j in range(M):
-                total += multiplicities[j] * my_kernel(n, p, pers_diagram[j])
+                total += multiplicities[j] * my_kernel(n, p, pers_diagram[j])* (pers_diagram[j][1]-pers_diagram[j][0])**2
             out[i] = total
         return out
 
