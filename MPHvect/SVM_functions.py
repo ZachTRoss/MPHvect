@@ -12,6 +12,10 @@ from sklearn.svm import SVC
 from sklearn.decomposition import PCA
 from sklearn.model_selection import cross_val_score, StratifiedKFold, KFold
 
+import numpy as np
+import matplotlib.pyplot as plt
+
+
 def calc_test_value(class_1_vecs, class_2_vecs):
   mean_1=np.mean(class_1_vecs,axis=0)
   mean_2=np.mean(class_2_vecs,axis=0)
