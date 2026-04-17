@@ -1,3 +1,12 @@
+#make sure scikit-learn is pip installed
+try:
+    import sklearn
+except ImportError as e:
+    raise ImportError(
+        "This module requires scikit-learn. Install it with:\n"
+        "pip install scikit-learn"
+    ) from e
+  
 from sklearn.neighbors import KernelDensity
 from sklearn.svm import SVC
 from sklearn.decomposition import PCA
@@ -37,6 +46,7 @@ def do_a_permutation_test(class_1_vecs, class_2_vecs, num_permutations):
   return p_value
 
 def do_SVM_and_PCA(list1, list2, n_permutations=1000, cv_folds=10, random_state=42):
+  
     """
     Performs SVM classification between two sets of vectors,
     calculates a p-value via permutation test,
