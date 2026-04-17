@@ -7,10 +7,8 @@ setup(
     install_requires=[
         "numpy",
         "matplotlib",
-        "scikit-learn",
         "plotly",
         "gudhi",
-        "ripser",
         # optional:
         # "multipers",
         # "persim",
