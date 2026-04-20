@@ -124,7 +124,7 @@ def vectorize_fast(n_list, p_list, pers_diagram, multiplicities):
         p = p_list[i]
         total = 0.0
         for j in range(M):
-            total += multiplicities[j] * my_kernel(n, p, pers_diagram[j]) * (pers_diagram[j][1]-pers_diagram[j][0])**2
+            total += multiplicities[j] * my_kernel(n, p, pers_diagram[j]) 
         out[i] = total
     return out
 
@@ -533,38 +533,34 @@ def plot_nailbed(points, vectors, colors=plotly_colors):
     fig.show()
 
 # This function is a wrap up of the previous two functions. It is the most user-friendly. You can use this to takeinputs of a persistence diagram (and possibly multiplicities), as well as the number of triangulations you wish to use in your vectorizatoin, and output the visualization for the vectorization of given diagram, whether it's 1-parameter or 2-parameter.  Note: This normalizes persistence diagrams by (10*max entry /9), then replaces infinite values with 1. This way, infinite lifespans still rank more highly than the maximal finite lifespan(s).
-
-def MPHvect_visualize(points, multiplicities=None, number_of_triangulations=5):
+def MPHvect_nailbed(points, multiplicities=None, number_of_triangulations=5):
 
   if points[0].size==2:
-    vecmap=generate_vect_map(1,number_of_triangulations)
-    max_val = max(arr[np.isfinite(arr)].max() for arr in points)
-    norm_pd = 0.9*points / max_val
-
-    normalized_diagram=replace_inf_safe(norm_pd)
-
+    normalized_diagram=replace_inf_safe(points)
+    n_list,p_list=collect_vertices(1,number_of_triangulations,0)
+    
     list_of_vecs=[]
     for x in normalized_diagram:
-      list_of_vecs.append(vectorize(vecmap, np.array([x])))
+      list_of_vecs.append(vectorize_fast(n_list, p_list, np.array([x]), [1]))
 
     plot_nailbed(normalized_diagram, list_of_vecs, plotly_colors)
 
   elif points[0].size==4:
       if multiplicities is None:
         raise ValueError("If points are 4D, multiplicities must be provided as an np.array of equal length to 'points'.")
+      n_list,p_list=collect_vertices(2,number_of_triangulations,0)
+     
 
-      vecmap=generate_vect_map(2,number_of_triangulations)
-      max_val = max(arr[np.isfinite(arr)].max() for arr in points)
-      norm_pd = 0.9*points / max_val
-
-      normalized_diagram=replace_inf_safe(norm_pd)
+      normalized_diagram=replace_inf_safe(points)
 
       list_of_vecs=[]
       for i,x in enumerate(normalized_diagram):
-        list_of_vecs.append(multiplicities[i]*vectorize(vecmap, np.array([x])))
+        list_of_vecs.append(vectorize_fast(n_list, p_list, np.array([x]), [multiplicities[i]]))
       plot_razor_blades(normalized_diagram, multiplicities, list_of_vecs, colors=plotly_colors, neg_colors=plotly_neg_colors)
   else:
       raise ValueError("Persistent Diagram must consist of points in 2D or 4D")
+
+
 
 def plot_mixup(points):
     """
