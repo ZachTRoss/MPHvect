@@ -561,6 +561,55 @@ def MPHvect_nailbed(points, multiplicities=None, number_of_triangulations=5):
       raise ValueError("Persistent Diagram must consist of points in 2D or 4D")
 
 
+def vis_vector(vector, n_list, p_list, resolution=100, norm_val=1):
+  assert len(vector) == len(n_list), "Mismatch in lengths"
+
+
+     # Create grid on unit square
+  x = np.linspace(0, 1, resolution)
+  y = np.linspace(0, 1, resolution)
+  X, Y = np.meshgrid(x, y)
+
+    # Initialize Z
+  Z = np.zeros_like(X, dtype=float)
+
+  for i in range(resolution):
+    for j in range(resolution):
+        point = np.array([X[i, j], Y[i, j]])
+
+        val = 0.0
+        for a, n, p in zip(vector, n_list, p_list):
+            val += a *  my_kernel(n, p, point) * (1/2**(n)) * (p[1]-p[0])**2
+
+        Z[i, j] = val
+
+    # Plot
+
+  surface = go.Surface(
+        x=x*norm_val,
+        y=y*norm_val,
+        z=Z,
+        colorscale='Viridis'
+      )
+
+      # Set up the layout
+  layout = go.Layout(
+        title='3D Interactive Surface Plot Using Custom Kernel Function',
+        height=1200,
+        width=1200,
+        scene=dict(
+            xaxis_title='X-axis',
+            yaxis_title='Y-axis',
+            zaxis_title='Z-axis'
+          )
+      )
+
+      # Create the figure
+  fig = go.Figure(data=[surface], layout=layout)
+
+      # Show the plot
+  fig.show()
+
 
 def plot_mixup(points):
     """
