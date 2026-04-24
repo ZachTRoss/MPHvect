@@ -43,6 +43,28 @@ except Exception:
         return func
     NUMBA_AVAILABLE = False
 
+def get_4d_norm_vals(barcodes, cutoff=None):
+    
+    union_bars=np.vstack([bars for bars,mults in barcodes])
+    union_bars=union_bars[~np.isinf(union_bars[:,3])]
+    union_bars=union_bars[~np.isinf(union_bars[:,2])]
+    #mmax=max(max(arr[np.isfinite(arr)].max() for arr in barcode[0]) for barcode in barcodes)
+    #union_bars[np.isinf(union_bars[:,3]),3]=1.1*mmax
+    #union_bars[np.isinf(union_bars[:,2]),2]=1.1*mmax
+    vals =np.minimum(union_bars[:,3]-union_bars[:,1], union_bars[:,2]-union_bars[:,0])
+    idx=np.argsort(-vals)
+    sorted_bars=union_bars[idx]
+
+    
+   
+    if cutoff==None:
+        cutoff=len(sorted_bars)
+
+    most_persistence_bars=sorted_bars[:cutoff]
+    height_norm_val = np.max(most_persistence_bars[:, 3])
+    width_norm_val = np.max(most_persistence_bars[:, 2])
+
+    return height_norm_val, width_norm_val
 
 # ---------------------------
 # NUMBA-accelerated internals
