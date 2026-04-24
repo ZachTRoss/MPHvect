@@ -126,4 +126,4 @@ def do_SVM_and_PCA(list1, list2, n_permutations=1000, cv_folds=10, random_state=
 
     plt.show()
 
-    return accuracy, p_value
+   
