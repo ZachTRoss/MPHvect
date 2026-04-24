@@ -463,11 +463,13 @@ def plot_razor_blades(bars, multiplicities, vectorizations, colors=plotly_colors
         if quads:
             add_quads(fig, quads, color, opacity=0.6)
 
+    xmin,xmax=np.minimum(bars[:,0]), np.maximum(bars[:,2])
+    ymin,ymax=np.minimum(bars[:,1]), np.maximum(bars[:,3])
     # Layout once at the end
     fig.update_layout(
         scene=dict(
-            xaxis=dict(range=[0, 0.5], showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(range=[0, 1], showgrid=False, zeroline=False, showticklabels=False),
+            xaxis=dict(range=[0.9*xmin, 1.1*xmax], showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(range=[0.9*ymin, 1.1*ymax], showgrid=False, zeroline=False, showticklabels=False),
             zaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         ),
         width=700, height=600,
