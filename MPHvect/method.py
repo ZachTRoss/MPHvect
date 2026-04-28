@@ -486,7 +486,7 @@ def plot_nailbed(points, vectors, colors=plotly_colors, y_max=None):
     fig = go.Figure()
     vectors=np.array(vectors)
 
-    if y_max=None:
+    if y_max==None:
         y_max = max(points[:,1])
     x_min = min(points[:,0])
 
