@@ -480,12 +480,14 @@ def plot_razor_blades(bars, multiplicities, vectorizations, colors=plotly_colors
     fig.show()
 
 #This function plots a visualization of the vectorization of a 1-parameter persistence module.
-def plot_nailbed(points, vectors, colors=plotly_colors):
+def plot_nailbed(points, vectors, colors=plotly_colors, y_max=None):
 
 
     fig = go.Figure()
     vectors=np.array(vectors)
-    y_max = max(points[:,1])
+
+    if y_max=None:
+        y_max = max(points[:,1])
     x_min = min(points[:,0])
 
     # Shaded region x <= y (in XY-plane at z=0)
