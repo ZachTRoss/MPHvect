@@ -585,7 +585,7 @@ def MPHvect_nailbed(points, multiplicities=None, number_of_triangulations=5):
       raise ValueError("Persistent Diagram must consist of points in 2D or 4D")
 
 
-def vis_vector(vector, n_list, p_list, resolution=100, norm_val=1):
+def vis_vector(vector, n_list, p_list, resolution=100, norm_val=1, title = '3D Interactive Surface Plot Using Custom Kernel Function'):
   assert len(vector) == len(n_list), "Mismatch in lengths"
 
 
@@ -618,7 +618,7 @@ def vis_vector(vector, n_list, p_list, resolution=100, norm_val=1):
 
       # Set up the layout
   layout = go.Layout(
-        title='3D Interactive Surface Plot Using Custom Kernel Function',
+        title=title,
         height=1200,
         width=1200,
         scene=dict(
