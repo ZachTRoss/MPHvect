@@ -559,7 +559,7 @@ def plot_nailbed(points, vectors, colors=plotly_colors, y_max=None):
     fig.show()
 
 # This function is a wrap up of the previous two functions. It is the most user-friendly. You can use this to takeinputs of a persistence diagram (and possibly multiplicities), as well as the number of triangulations you wish to use in your vectorizatoin, and output the visualization for the vectorization of given diagram, whether it's 1-parameter or 2-parameter.  Note: This normalizes persistence diagrams by (10*max entry /9), then replaces infinite values with 1. This way, infinite lifespans still rank more highly than the maximal finite lifespan(s).
-def MPHvect_nailbed(points, multiplicities=None, number_of_triangulations=5):
+def MPHvect_nailbed(points, multiplicities=None, number_of_triangulations=5, y_max=None):
 
   if points[0].size==2:
     normalized_diagram=replace_inf_safe(points)
@@ -569,7 +569,7 @@ def MPHvect_nailbed(points, multiplicities=None, number_of_triangulations=5):
     for x in normalized_diagram:
       list_of_vecs.append(vectorize_fast(n_list, p_list, np.array([x]), [1]))
 
-    plot_nailbed(normalized_diagram, list_of_vecs, plotly_colors)
+    plot_nailbed(normalized_diagram, list_of_vecs, plotly_colors, y_max)
 
   elif points[0].size==4:
       if multiplicities is None:
